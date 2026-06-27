@@ -46,49 +46,42 @@ const DB = {
     this.saveMatches(this.getMatches().filter(m => m.id !== id));
   },
 
-  // サンプルデータ初期化
+  // データ初期化（さくら将棋教室の実データ）
   initSampleData() {
     if (this.getPlayers().length > 0) return;
 
-    // sakura (渡辺さくら) を含む棋士リスト
     const players = [
-      { name: '佐藤　一郎', kyu: '三段', note: '' },
-      { name: '鈴木　花子', kyu: '二段', note: '' },
-      { name: '田中　次郎', kyu: '四段', note: '' },
-      { name: '山田　美咲', kyu: '初段', note: '' },
-      { name: '高橋　健一', kyu: '五段', note: '' },
-      { name: '渡辺　さくら', kyu: '二段', note: 'ログインID: sakura' },
+      { memberCode: 1,  name: '下田智晴',   kana: 'しもだともはる',       kyu: '10級', memberType: '正会員', note: '' },
+      { memberCode: 2,  name: '井上晴翔',   kana: 'いのうえはると',       kyu: '5級',  memberType: '正会員', note: '' },
+      { memberCode: 3,  name: '伊藤奏汰',   kana: 'いとうそうた',         kyu: '初段', memberType: '正会員', note: '' },
+      { memberCode: 4,  name: '大坊僚汰',   kana: 'だいぼうりょうた',     kyu: '2級',  memberType: '正会員', note: '' },
+      { memberCode: 5,  name: '大坊漣',     kana: 'だいぼうれん',         kyu: '10級', memberType: '正会員', note: '' },
+      { memberCode: 6,  name: '大谷洋平',   kana: 'おおたにようへい',     kyu: '6級',  memberType: '正会員', note: '' },
+      { memberCode: 7,  name: '小宮沙雪',   kana: 'こみやさゆき',         kyu: '30級', memberType: '正会員', note: '' },
+      { memberCode: 8,  name: '小宮誠司',   kana: 'こみやせいじ',         kyu: '13級', memberType: '正会員', note: '' },
+      { memberCode: 9,  name: '山本翔平',   kana: 'やまもとしょうへい',   kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 10, name: '新井佑基',   kana: 'あらいゆうき',         kyu: '8級',  memberType: '正会員', note: '' },
+      { memberCode: 11, name: '新出直之',   kana: 'しんでなおゆき',       kyu: '3級',  memberType: '正会員', note: '' },
+      { memberCode: 12, name: '杉山兼斗',   kana: 'すぎやまけんと',       kyu: '14級', memberType: '正会員', note: '' },
+      { memberCode: 13, name: '杉山晟斗',   kana: 'すぎやませいと',       kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 14, name: '澤井悠磨',   kana: 'さわいゆうま',         kyu: '初段', memberType: '正会員', note: '' },
+      { memberCode: 15, name: '田畑春馬',   kana: 'たばたはるま',         kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 16, name: '落合博優',   kana: 'おちあいひろまさ',     kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 17, name: '関口結人',   kana: 'せきぐちゆいと',       kyu: '19級', memberType: '正会員', note: '' },
+      { memberCode: 18, name: '齊藤朝陽',   kana: 'さいとうあさひ',       kyu: '7級',  memberType: '正会員', note: '' },
+      { memberCode: 19, name: '上遠野隆一', kana: 'かとうのりゅういち',   kyu: '2級',  memberType: '正会員', note: '' },
+      { memberCode: 20, name: '上遠野旭弘', kana: 'かとうのあきひろ',     kyu: '4級',  memberType: '正会員', note: '' },
+      { memberCode: 21, name: '家泉和真',   kana: 'いえずみかずま',       kyu: '8級',  memberType: '正会員', note: '' },
+      { memberCode: 22, name: '齋藤伸乃介', kana: 'さいとうしんのすけ',   kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 23, name: '森奏太',     kana: 'もりそうた',           kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 24, name: '中村太洋',   kana: 'なかむらたいよう',     kyu: '15級', memberType: '正会員', note: '' },
+      { memberCode: 25, name: '大坊和美',   kana: 'だいぼうかずみ',       kyu: '六段', memberType: '指導員', note: '' },
+      { memberCode: 26, name: '小林良輔',   kana: 'こばやしりょうすけ',   kyu: '七段', memberType: '指導員', note: '' },
+      { memberCode: 27, name: '大坊功司',   kana: 'だいぼうあつし',       kyu: '1級',  memberType: '指導員', note: '' },
+      { memberCode: 28, name: '大坊颯汰',   kana: 'だいぼうそうた',       kyu: '初段', memberType: '指導員', note: '' },
+      { memberCode: 30, name: '細田麗水',   kana: 'ほそだれみ',           kyu: '6級',  memberType: '正会員', note: '' },
+      { memberCode: 31, name: '細田櫂生',   kana: 'ほそだかい',           kyu: '7級',  memberType: '正会員', note: '' },
     ];
     players.forEach(p => this.addPlayer(p));
-
-    const pl = this.getPlayers();
-    // pl[5] = 渡辺さくら (sakura)
-    const sakura = pl[5];
-
-    const d = (offsetDays) => {
-      const dt = new Date('2026-06-27');
-      dt.setDate(dt.getDate() + offsetDays);
-      return dt.toISOString().split('T')[0];
-    };
-
-    const matches = [
-      // 第1回戦
-      { date: d(-20), blackId: pl[0].id, whiteId: pl[1].id, result: 'black', kifu: '▲7六歩 △8四歩 ▲6八銀 ...', round: '第1回戦', status: 'done' },
-      { date: d(-20), blackId: pl[2].id, whiteId: pl[3].id, result: 'black', kifu: '', round: '第1回戦', status: 'done' },
-      { date: d(-20), blackId: pl[4].id, whiteId: sakura.id, result: 'white', kifu: '▲7六歩 △3四歩 ▲2六歩 ...', round: '第1回戦', status: 'done' },
-      // 第2回戦
-      { date: d(-13), blackId: sakura.id, whiteId: pl[0].id, result: 'black', kifu: '▲7六歩 △8四歩 ...', round: '第2回戦', status: 'done' },
-      { date: d(-13), blackId: pl[3].id, whiteId: pl[4].id, result: 'white', kifu: '', round: '第2回戦', status: 'done' },
-      { date: d(-13), blackId: pl[1].id, whiteId: pl[2].id, result: 'black', kifu: '', round: '第2回戦', status: 'done' },
-      // 第3回戦
-      { date: d(-6), blackId: pl[2].id, whiteId: sakura.id, result: 'white', kifu: '▲7六歩 △3四歩 ...', round: '第3回戦', status: 'done' },
-      { date: d(-6), blackId: pl[1].id, whiteId: pl[4].id, result: 'draw', kifu: '', round: '第3回戦', status: 'done' },
-      { date: d(-6), blackId: pl[0].id, whiteId: pl[3].id, result: 'black', kifu: '', round: '第3回戦', status: 'done' },
-      // 第4回戦（未了）
-      { date: d(7), blackId: sakura.id, whiteId: pl[3].id, result: 'pending', kifu: '', round: '第4回戦', status: 'pending' },
-      { date: d(7), blackId: pl[0].id, whiteId: pl[2].id, result: 'pending', kifu: '', round: '第4回戦', status: 'pending' },
-      { date: d(7), blackId: pl[4].id, whiteId: pl[1].id, result: 'pending', kifu: '', round: '第4回戦', status: 'pending' },
-    ];
-    matches.forEach(m => this.addMatch(m));
   }
 };

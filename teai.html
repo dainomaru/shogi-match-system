@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>受付／手合い | さくら将棋教室 対局管理システム</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .player-checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .player-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: #fff; transition: background 0.15s; }
+    .player-check-item:hover { background: #fdf6f6; }
+    .player-check-item.checked { background: #f3e8e8; border-color: #8b3a3a; }
+    .player-check-item input { accent-color: #8b3a3a; }
+    .player-check-item .p-name { font-weight: bold; font-size: 14px; }
+    .player-check-item .p-kyu { font-size: 12px; color: #666; }
+    .pairing-result { margin-top: 8px; }
+    .pairing-table td, .pairing-table th { padding: 8px 14px; }
+    .board-number { font-size: 13px; color: #888; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .step-label { font-size: 13px; font-weight: bold; color: #8b3a3a; margin-bottom: 8px; display: block; }
+    .bye-badge { background: #f0a500; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#9750;</div>
+      <h2>さくら将棋教室<br>対局管理システム</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><span class="nav-icon">&#128200;</span><span>ダッシュボード</span></a>
+      <a href="teai.html" class="active"><span class="nav-icon">&#9822;</span><span>受付／手合い</span></a>
+      <a href="matches.html"><span class="nav-icon">&#128196;</span><span>対局管理</span></a>
+      <a href="players.html"><span class="nav-icon">&#128100;</span><span>名簿管理</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" id="logoutBtn">ログアウト</a>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">受付／手合い組み合わせ</div>
+      <div class="topbar-user"><span id="currentUser"></span> さん</div>
+    </header>
+
+    <main class="page-body">
+
+      <!-- STEP1: 受付 -->
+      <div class="card">
+        <span class="step-label">STEP 1 ― 本日の参加者にチェックを入れてください</span>
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <select id="filterType" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+            <option value="">全員</option>
+            <option value="正会員">正会員</option>
+            <option value="指導員">指導員</option>
+          </select>
+          <button class="btn btn-outline btn-sm" id="checkAllBtn">全員チェック</button>
+          <button class="btn btn-secondary btn-sm" id="uncheckAllBtn">全解除</button>
+          <span id="checkedCount" style="font-size:13px;color:#555">0名 選択中</span>
+        </div>
+        <div class="player-checklist" id="playerChecklist"></div>
+      </div>
+
+      <!-- STEP2: 手合い方式 -->
+      <div class="card">
+        <span class="step-label">STEP 2 ― 手合い方式を選んで組み合わせを生成</span>
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="margin:0">
+            <label>手合い方式</label>
+            <select id="pairingMethod" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px">
+              <option value="kyu">棋力順組み合わせ（近い棋力同士）</option>
+              <option value="swiss">スイス式（勝ち数順）</option>
+              <option value="random">ランダム</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>ラウンド名</label>
+            <input type="text" id="roundName" value="第1回戦" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:140px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>対局日</label>
+            <input type="date" id="matchDate" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px">
+          </div>
+          <button class="btn btn-primary" id="generateBtn">&#9822; 組み合わせ生成</button>
+        </div>
+      </div>
+
+      <!-- STEP3: 組み合わせ結果 -->
+      <div class="card" id="pairingResultCard" style="display:none">
+        <div class="section-header">
+          <div class="card-title" style="margin:0;border:none;padding:0">手合い組み合わせ</div>
+          <div class="btn-group">
+            <button class="btn btn-success btn-sm" id="registerMatchesBtn">&#10003; 対局に登録</button>
+            <button class="btn btn-secondary btn-sm" id="reshuffleBtn">再生成</button>
+          </div>
+        </div>
+        <div class="table-wrapper pairing-result" style="margin-top:16px">
+          <table class="pairing-table">
+            <thead>
+              <tr>
+                <th>盤番号</th>
+                <th>先手</th>
+                <th>棋力</th>
+                <th></th>
+                <th>後手</th>
+                <th>棋力</th>
+              </tr>
+            </thead>
+            <tbody id="pairingBody"></tbody>
+          </table>
+        </div>
+        <div id="byePlayer" style="margin-top:12px;font-size:14px"></div>
+      </div>
+
+      <!-- 本日の対局一覧 -->
+      <div class="card">
+        <div class="card-title">本日登録済みの対局</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>ラウンド</th><th>先手</th><th>後手</th><th>結果</th><th>状態</th><th>操作</th></tr>
+            </thead>
+            <tbody id="todayMatchesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  if (sessionStorage.getItem('loggedIn') !== '1') { location.href = 'index.html'; }
+  document.getElementById('currentUser').textContent = sessionStorage.getItem('userId') || '';
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault(); sessionStorage.clear(); location.href = 'index.html';
+  });
+
+  DB.initSampleData();
+
+  // 今日の日付をセット
+  document.getElementById('matchDate').value = new Date().toISOString().split('T')[0];
+
+  let checkedIds = new Set();
+  let currentPairings = [];
+
+  // 棋力を数値に変換（ソート用）
+  function kyuToNum(kyu) {
+    if (!kyu) return 50;
+    if (kyu === '九段') return 1; if (kyu === '八段') return 2; if (kyu === '七段') return 3;
+    if (kyu === '六段') return 4; if (kyu === '五段') return 5; if (kyu === '四段') return 6;
+    if (kyu === '三段') return 7; if (kyu === '二段') return 8; if (kyu === '初段') return 9;
+    const m = kyu.match(/(\d+)級/);
+    return m ? 9 + parseInt(m[1]) : 50;
+  }
+
+  function playerName(id) {
+    const p = DB.getPlayers().find(x => x.id === id);
+    return p ? p.name : '―';
+  }
+
+  function renderChecklist() {
+    const filterType = document.getElementById('filterType').value;
+    let players = DB.getPlayers();
+    if (filterType) players = players.filter(p => (p.memberType || '正会員') === filterType);
+
+    const div = document.getElementById('playerChecklist');
+    div.innerHTML = players.map(p => `
+      <label class="player-check-item ${checkedIds.has(p.id) ? 'checked' : ''}" data-id="${p.id}">
+        <input type="checkbox" ${checkedIds.has(p.id) ? 'checked' : ''} onchange="toggleCheck(${p.id}, this)">
+        <span>
+          <div class="p-name">${p.name}</div>
+          <div class="p-kyu">${p.kyu || '―'} / ${p.memberType || '正会員'}</div>
+        </span>
+      </label>`).join('');
+    updateCount();
+  }
+
+  function toggleCheck(id, cb) {
+    if (cb.checked) checkedIds.add(id);
+    else checkedIds.delete(id);
+    const el = cb.closest('.player-check-item');
+    el.classList.toggle('checked', cb.checked);
+    updateCount();
+  }
+
+  function updateCount() {
+    document.getElementById('checkedCount').textContent = checkedIds.size + '名 選択中';
+  }
+
+  document.getElementById('filterType').addEventListener('change', renderChecklist);
+  document.getElementById('checkAllBtn').addEventListener('click', () => {
+    const filterType = document.getElementById('filterType').value;
+    DB.getPlayers().filter(p => !filterType || (p.memberType || '正会員') === filterType)
+      .forEach(p => checkedIds.add(p.id));
+    renderChecklist();
+  });
+  document.getElementById('uncheckAllBtn').addEventListener('click', () => {
+    checkedIds.clear(); renderChecklist();
+  });
+
+  function getWins(playerId) {
+    return DB.getMatches().filter(m => m.status === 'done' && (
+      (m.blackId === playerId && m.result === 'black') ||
+      (m.whiteId === playerId && m.result === 'white')
+    )).length;
+  }
+
+  function generatePairings() {
+    const method = document.getElementById('pairingMethod').value;
+    let selected = DB.getPlayers().filter(p => checkedIds.has(p.id));
+    if (selected.length < 2) { alert('2名以上を選択してください。'); return null; }
+
+    // ソート
+    if (method === 'kyu') {
+      selected.sort((a, b) => kyuToNum(a.kyu) - kyuToNum(b.kyu));
+    } else if (method === 'swiss') {
+      selected.sort((a, b) => getWins(b.id) - getWins(a.id));
+    } else {
+      selected = selected.sort(() => Math.random() - 0.5);
+    }
+
+    let byePlayer = null;
+    if (selected.length % 2 !== 0) {
+      byePlayer = selected.pop();
+    }
+
+    const pairs = [];
+    for (let i = 0; i < selected.length; i += 2) {
+      // コイントスで先後決定
+      const flip = Math.random() < 0.5;
+      pairs.push({
+        black: flip ? selected[i] : selected[i + 1],
+        white: flip ? selected[i + 1] : selected[i],
+      });
+    }
+    return { pairs, byePlayer };
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    const result = generatePairings();
+    if (!result) return;
+    currentPairings = result.pairs;
+    renderPairings(result);
+  });
+
+  document.getElementById('reshuffleBtn').addEventListener('click', () => {
+    const result = generatePairings();
+    if (!result) return;
+    currentPairings = result.pairs;
+    renderPairings(result);
+  });
+
+  function renderPairings({ pairs, byePlayer }) {
+    document.getElementById('pairingResultCard').style.display = '';
+    const tbody = document.getElementById('pairingBody');
+    tbody.innerHTML = pairs.map((pair, i) => `
+      <tr>
+        <td class="board-number">${i + 1}盤</td>
+        <td><strong>${pair.black.name}</strong></td>
+        <td style="font-size:12px;color:#666">${pair.black.kyu || '―'}</td>
+        <td style="color:#999;text-align:center">vs</td>
+        <td><strong>${pair.white.name}</strong></td>
+        <td style="font-size:12px;color:#666">${pair.white.kyu || '―'}</td>
+      </tr>`).join('');
+
+    const byeEl = document.getElementById('byePlayer');
+    byeEl.innerHTML = byePlayer
+      ? `<span class="bye-badge">不戦</span> <strong>${byePlayer.name}</strong>（${byePlayer.kyu || '―'}）は今回の対局なし`
+      : '';
+  }
+
+  document.getElementById('registerMatchesBtn').addEventListener('click', () => {
+    if (currentPairings.length === 0) return;
+    const round = document.getElementById('roundName').value || '手合い';
+    const date = document.getElementById('matchDate').value;
+    currentPairings.forEach(pair => {
+      DB.addMatch({
+        date, round,
+        blackId: pair.black.id,
+        whiteId: pair.white.id,
+        result: 'pending',
+        status: 'pending',
+        kifu: '',
+      });
+    });
+    alert(`${currentPairings.length}局を対局に登録しました。`);
+    renderTodayMatches();
+    document.getElementById('pairingResultCard').style.display = 'none';
+    currentPairings = [];
+  });
+
+  function resultLabel(r) {
+    if (r === 'black') return '<span class="badge badge-black">先手勝</span>';
+    if (r === 'white') return '<span class="badge badge-white">後手勝</span>';
+    if (r === 'draw')  return '<span class="badge badge-draw">引分</span>';
+    return '<span class="badge badge-pending">未了</span>';
+  }
+
+  function renderTodayMatches() {
+    const today = new Date().toISOString().split('T')[0];
+    const matches = DB.getMatches().filter(m => m.date === today)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const tbody = document.getElementById('todayMatchesBody');
+    if (matches.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">本日の対局なし</td></tr>';
+      return;
+    }
+    tbody.innerHTML = matches.map(m => `
+      <tr>
+        <td>${m.round || '―'}</td>
+        <td>${playerName(m.blackId)}</td>
+        <td>${playerName(m.whiteId)}</td>
+        <td>${resultLabel(m.result)}</td>
+        <td>${m.status === 'done' ? '<span class="badge badge-done">終了</span>' : '<span class="badge badge-pending">対局中</span>'}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="recordResult(${m.id})">結果入力</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function recordResult(matchId) {
+    const m = DB.getMatches().find(x => x.id === matchId);
+    if (!m) return;
+    const black = DB.getPlayers().find(p => p.id === m.blackId);
+    const white = DB.getPlayers().find(p => p.id === m.whiteId);
+    const choice = prompt(
+      `結果を入力してください。\n先手: ${black ? black.name : '?'}\n後手: ${white ? white.name : '?'}\n\n1: 先手勝\n2: 後手勝\n3: 引分`
+    );
+    const map = { '1': 'black', '2': 'white', '3': 'draw' };
+    if (!map[choice]) return;
+    DB.updateMatch(matchId, { result: map[choice], status: 'done' });
+    renderTodayMatches();
+  }
+
+  renderChecklist();
+  renderTodayMatches();
+</script>
+</body>
+</html>
