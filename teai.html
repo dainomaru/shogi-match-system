@@ -13,12 +13,46 @@
     .player-check-item input { accent-color: #8b3a3a; }
     .player-check-item .p-name { font-weight: bold; font-size: 14px; }
     .player-check-item .p-kyu { font-size: 12px; color: #666; }
-    .pairing-result { margin-top: 8px; }
-    .pairing-table td, .pairing-table th { padding: 8px 14px; }
-    .board-number { font-size: 13px; color: #888; }
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
     .step-label { font-size: 13px; font-weight: bold; color: #8b3a3a; margin-bottom: 8px; display: block; }
-    .bye-badge { background: #f0a500; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+
+    /* ドラッグ&ドロップ */
+    .player-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; background: #fff;
+      border: 1.5px solid #c8a0a0; border-radius: 20px;
+      cursor: grab; font-size: 13px; user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: all .15s;
+      white-space: nowrap;
+    }
+    .player-chip:hover { background: #fdf0f0; border-color: #8b3a3a; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(139,58,58,.2); }
+    .player-chip.dragging { opacity: .3; cursor: grabbing; }
+    .player-chip .chip-kyu { font-size: 11px; color: #999; }
+
+    #availablePool {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      min-height: 56px; padding: 10px;
+      border: 2px dashed #ccc; border-radius: 8px; background: #f9f9f9;
+      transition: border-color .15s, background .15s;
+    }
+    #availablePool.drag-over { border-color: #8b3a3a; background: #fdf6f6; }
+
+    .drop-zone {
+      min-height: 36px; min-width: 140px; padding: 3px 8px;
+      border: 2px dashed #ddd; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      background: #fafafa; transition: border-color .15s, background .15s;
+      color: #ccc; font-size: 12px;
+    }
+    .drop-zone:empty::before { content: 'ドロップ'; }
+    .drop-zone.has-player { border-style: solid; border-color: #e0c0c0; background: #fff; justify-content: flex-start; color: inherit; }
+    .drop-zone.has-player:empty::before { content: ''; }
+    .drop-zone.drag-over { border-color: #8b3a3a !important; background: #fdf0f0 !important; }
+
+    .board-table { width: 100%; border-collapse: collapse; }
+    .board-table th { font-size: 12px; font-weight: normal; color: #888; padding: 4px 8px; border-bottom: 1px solid #eee; text-align: left; }
+    .board-table td { padding: 5px 6px; vertical-align: middle; }
+    .board-num-cell { font-size: 13px; color: #888; font-weight: bold; white-space: nowrap; width: 46px; }
+    .vs-cell { color: #bbb; text-align: center; font-size: 13px; width: 24px; }
   </style>
 </head>
 <body>
@@ -63,55 +97,62 @@
         <div class="player-checklist" id="playerChecklist"></div>
       </div>
 
-      <!-- STEP2: 手合い方式 -->
+      <!-- STEP2: ドラッグ&ドロップ手合い -->
       <div class="card">
-        <span class="step-label">STEP 2 ― 手合い方式を選んで組み合わせを生成</span>
-        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
-          <div class="form-group" style="margin:0">
-            <label>手合い方式</label>
-            <select id="pairingMethod" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px">
-              <option value="kyu">棋力順組み合わせ（近い棋力同士）</option>
-              <option value="swiss">スイス式（勝ち数順）</option>
-              <option value="random">ランダム</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label>ラウンド名</label>
-            <input type="text" id="roundName" value="第1回戦" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:140px">
-          </div>
-          <div class="form-group" style="margin:0">
-            <label>対局日</label>
-            <input type="date" id="matchDate" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px">
-          </div>
-          <button class="btn btn-primary" id="generateBtn">&#9822; 組み合わせ生成</button>
-        </div>
-      </div>
+        <span class="step-label">STEP 2 ― 参加者を盤の先手・後手へドラッグして手合いを決定してください</span>
 
-      <!-- STEP3: 組み合わせ結果 -->
-      <div class="card" id="pairingResultCard" style="display:none">
-        <div class="section-header">
-          <div class="card-title" style="margin:0;border:none;padding:0">手合い組み合わせ</div>
-          <div class="btn-group">
-            <button class="btn btn-success btn-sm" id="registerMatchesBtn">&#10003; 対局に登録</button>
-            <button class="btn btn-secondary btn-sm" id="reshuffleBtn">再生成</button>
+        <!-- 自動組み合わせ -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:13px;color:#666;font-weight:bold">自動組み合わせ：</span>
+          <button class="btn btn-outline btn-sm" onclick="autoPair('kyu')">棋力順</button>
+          <button class="btn btn-outline btn-sm" onclick="autoPair('swiss')">スイス式</button>
+          <button class="btn btn-outline btn-sm" onclick="autoPair('random')">ランダム</button>
+          <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="clearAllPairings()">全クリア</button>
+        </div>
+
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <!-- 未割当参加者プール -->
+          <div style="flex:0 0 auto;min-width:160px;max-width:220px">
+            <div style="font-size:12px;font-weight:bold;color:#555;margin-bottom:6px">未割当の参加者</div>
+            <div id="availablePool"
+              ondragover="poolDragOver(event)"
+              ondrop="poolDrop(event)"
+              ondragenter="poolDragEnter(event)"
+              ondragleave="poolDragLeave(event)">
+            </div>
+          </div>
+
+          <!-- 手合い表 -->
+          <div style="flex:1;min-width:300px">
+            <div style="font-size:12px;font-weight:bold;color:#555;margin-bottom:6px">手合い表</div>
+            <table class="board-table">
+              <thead>
+                <tr>
+                  <th class="board-num-cell">盤</th>
+                  <th>先手</th>
+                  <th class="vs-cell"></th>
+                  <th>後手</th>
+                  <th style="width:44px"></th>
+                </tr>
+              </thead>
+              <tbody id="boardRows"></tbody>
+            </table>
+            <button class="btn btn-outline btn-sm" style="margin-top:10px;font-size:12px" onclick="addBoardRow()">＋ 盤を追加</button>
           </div>
         </div>
-        <div class="table-wrapper pairing-result" style="margin-top:16px">
-          <table class="pairing-table">
-            <thead>
-              <tr>
-                <th>盤番号</th>
-                <th>先手</th>
-                <th>棋力</th>
-                <th></th>
-                <th>後手</th>
-                <th>棋力</th>
-              </tr>
-            </thead>
-            <tbody id="pairingBody"></tbody>
-          </table>
+
+        <!-- 登録オプション -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:13px">ラウンド名</label>
+            <input type="text" id="roundName" value="第1回戦" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:140px;display:block;margin-top:4px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:13px">対局日</label>
+            <input type="date" id="matchDate" style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;display:block;margin-top:4px">
+          </div>
+          <button class="btn btn-primary" onclick="registerMatches()">&#10003; 対局に登録</button>
         </div>
-        <div id="byePlayer" style="margin-top:12px;font-size:14px"></div>
       </div>
 
       <!-- 本日の対局一覧 -->
@@ -151,29 +192,12 @@
     e.preventDefault(); sessionStorage.clear(); location.href = 'index.html';
   });
 
-  let pendingResetId = null;
-  document.getElementById('resetConfirmModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('resetConfirmModal'))
-      document.getElementById('resetConfirmModal').classList.remove('open');
-  });
-  document.getElementById('confirmResetBtn').addEventListener('click', () => {
-    if (pendingResetId !== null) {
-      DB.updateMatch(pendingResetId, { result: 'pending', status: 'pending' });
-      pendingResetId = null;
-      document.getElementById('resetConfirmModal').classList.remove('open');
-      renderTodayMatches();
-    }
-  });
-
   DB.initSampleData();
-
-  // 今日の日付をセット
   document.getElementById('matchDate').value = new Date().toISOString().split('T')[0];
 
+  // ===== STEP 1: 受付 =====
   let checkedIds = new Set();
-  let currentPairings = [];
 
-  // 棋力を数値に変換（ソート用）
   function kyuToNum(kyu) {
     if (!kyu) return 50;
     if (kyu === '九段') return 1; if (kyu === '八段') return 2; if (kyu === '七段') return 3;
@@ -183,19 +207,13 @@
     return m ? 9 + parseInt(m[1]) : 50;
   }
 
-  function playerName(id) {
-    const p = DB.getPlayers().find(x => x.id === id);
-    return p ? p.name : '―';
-  }
-
   function renderChecklist() {
     const filterType = document.getElementById('filterType').value;
     let players = DB.getPlayers();
     if (filterType) players = players.filter(p => (p.memberType || '正会員') === filterType);
-
     const div = document.getElementById('playerChecklist');
     div.innerHTML = players.map(p => `
-      <label class="player-check-item ${checkedIds.has(p.id) ? 'checked' : ''}" data-id="${p.id}">
+      <label class="player-check-item ${checkedIds.has(p.id) ? 'checked' : ''}">
         <input type="checkbox" ${checkedIds.has(p.id) ? 'checked' : ''} onchange="toggleCheck(${p.id}, this)">
         <span>
           <div class="p-name">${p.name}</div>
@@ -207,10 +225,10 @@
 
   function toggleCheck(id, cb) {
     if (cb.checked) checkedIds.add(id);
-    else checkedIds.delete(id);
-    const el = cb.closest('.player-check-item');
-    el.classList.toggle('checked', cb.checked);
+    else { checkedIds.delete(id); removePlayerFromBoard(id); }
+    cb.closest('.player-check-item').classList.toggle('checked', cb.checked);
     updateCount();
+    renderPairingUI();
   }
 
   function updateCount() {
@@ -219,14 +237,196 @@
 
   document.getElementById('filterType').addEventListener('change', renderChecklist);
   document.getElementById('checkAllBtn').addEventListener('click', () => {
-    const filterType = document.getElementById('filterType').value;
-    DB.getPlayers().filter(p => !filterType || (p.memberType || '正会員') === filterType)
+    const ft = document.getElementById('filterType').value;
+    DB.getPlayers().filter(p => !ft || (p.memberType || '正会員') === ft)
       .forEach(p => checkedIds.add(p.id));
-    renderChecklist();
+    renderChecklist(); renderPairingUI();
   });
   document.getElementById('uncheckAllBtn').addEventListener('click', () => {
-    checkedIds.clear(); renderChecklist();
+    checkedIds.clear(); clearAllPairings(); renderChecklist();
   });
+
+  // ===== STEP 2: ドラッグ&ドロップ手合い =====
+  let boardPairings = {}; // { boardNum: { black: playerId|null, white: playerId|null } }
+  let boardCount = 0;
+  let dragData = null; // { playerId, sourceKey }
+
+  function addBoardRow(blackId, whiteId) {
+    boardCount++;
+    const num = boardCount;
+    boardPairings[num] = { black: blackId ?? null, white: whiteId ?? null };
+    const tbody = document.getElementById('boardRows');
+    const tr = document.createElement('tr');
+    tr.dataset.board = num;
+    tr.innerHTML = `
+      <td class="board-num-cell">${num}盤</td>
+      <td><div class="drop-zone" id="slot-${num}-black"
+        ondragover="slotDragOver(event)" ondrop="slotDrop(event,${num},'black')"
+        ondragenter="slotDragEnter(event)" ondragleave="slotDragLeave(event)"></div></td>
+      <td class="vs-cell">vs</td>
+      <td><div class="drop-zone" id="slot-${num}-white"
+        ondragover="slotDragOver(event)" ondrop="slotDrop(event,${num},'white')"
+        ondragenter="slotDragEnter(event)" ondragleave="slotDragLeave(event)"></div></td>
+      <td><button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 6px" onclick="clearRow(${num})">×</button></td>
+    `;
+    tbody.appendChild(tr);
+    renderSlot(num, 'black');
+    renderSlot(num, 'white');
+  }
+
+  function chipHtml(playerId, sourceKey) {
+    const p = DB.getPlayers().find(x => x.id === playerId);
+    if (!p) return '';
+    return `<div class="player-chip" draggable="true"
+      ondragstart="onChipDragStart(event,${playerId},'${sourceKey}')"
+      ondragend="onChipDragEnd(event)">
+      <strong>${p.name}</strong><span class="chip-kyu">${p.kyu || '―'}</span>
+    </div>`;
+  }
+
+  function renderSlot(boardNum, side) {
+    const slot = document.getElementById(`slot-${boardNum}-${side}`);
+    if (!slot) return;
+    const playerId = boardPairings[boardNum]?.[side];
+    if (playerId != null) {
+      slot.className = 'drop-zone has-player';
+      slot.innerHTML = chipHtml(playerId, `slot-${boardNum}-${side}`);
+    } else {
+      slot.className = 'drop-zone';
+      slot.innerHTML = '';
+    }
+  }
+
+  function renderAvailablePool() {
+    const assigned = new Set();
+    Object.values(boardPairings).forEach(row => {
+      if (row.black != null) assigned.add(row.black);
+      if (row.white != null) assigned.add(row.white);
+    });
+    const available = DB.getPlayers().filter(p => checkedIds.has(p.id) && !assigned.has(p.id));
+    const pool = document.getElementById('availablePool');
+    pool.innerHTML = available.length === 0
+      ? '<span style="color:#aaa;font-size:12px;align-self:center;padding:4px">全員が手合いに組まれました</span>'
+      : available.map(p => chipHtml(p.id, 'pool')).join('');
+  }
+
+  function renderPairingUI() {
+    renderAvailablePool();
+    Object.keys(boardPairings).forEach(num => {
+      renderSlot(parseInt(num), 'black');
+      renderSlot(parseInt(num), 'white');
+    });
+  }
+
+  function removePlayerFromBoard(playerId) {
+    Object.keys(boardPairings).forEach(num => {
+      if (boardPairings[num].black === playerId) boardPairings[num].black = null;
+      if (boardPairings[num].white === playerId) boardPairings[num].white = null;
+    });
+    renderPairingUI();
+  }
+
+  function clearRow(boardNum) {
+    boardPairings[boardNum] = { black: null, white: null };
+    renderPairingUI();
+  }
+
+  function clearAllPairings() {
+    Object.keys(boardPairings).forEach(num => {
+      boardPairings[num] = { black: null, white: null };
+    });
+    renderPairingUI();
+  }
+
+  // Drag events
+  function onChipDragStart(event, playerId, sourceKey) {
+    dragData = { playerId, sourceKey };
+    event.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => event.target.classList.add('dragging'), 0);
+  }
+
+  function onChipDragEnd(event) {
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  }
+
+  // Pool drop
+  function poolDragOver(event) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }
+  function poolDragEnter(event) { event.currentTarget.classList.add('drag-over'); }
+  function poolDragLeave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget))
+      event.currentTarget.classList.remove('drag-over');
+  }
+  function poolDrop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    if (!dragData || dragData.sourceKey === 'pool') { dragData = null; return; }
+    const { sourceKey } = dragData;
+    const parts = sourceKey.split('-'); // slot-N-side
+    boardPairings[parseInt(parts[1])][parts[2]] = null;
+    renderPairingUI();
+    dragData = null;
+  }
+
+  // Slot drop
+  function slotDragOver(event) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }
+  function slotDragEnter(event) { event.currentTarget.classList.add('drag-over'); }
+  function slotDragLeave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget))
+      event.currentTarget.classList.remove('drag-over');
+  }
+  function slotDrop(event, targetBoard, targetSide) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    if (!dragData) return;
+    const { playerId, sourceKey } = dragData;
+    const targetKey = `slot-${targetBoard}-${targetSide}`;
+    if (sourceKey === targetKey) { dragData = null; return; }
+
+    const targetOccupant = boardPairings[targetBoard][targetSide];
+    boardPairings[targetBoard][targetSide] = playerId;
+
+    if (sourceKey !== 'pool') {
+      // Slot → Slot: swap
+      const parts = sourceKey.split('-');
+      boardPairings[parseInt(parts[1])][parts[2]] = targetOccupant;
+      renderSlot(parseInt(parts[1]), parts[2]);
+    }
+    // Pool → Slot: displaced player auto-returns to pool via renderAvailablePool
+
+    renderSlot(targetBoard, targetSide);
+    renderAvailablePool();
+    dragData = null;
+  }
+
+  // Auto-pair
+  function autoPair(method) {
+    let selected = DB.getPlayers().filter(p => checkedIds.has(p.id));
+    if (selected.length < 2) { alert('2名以上を受付してください。'); return; }
+
+    if (method === 'kyu') {
+      selected.sort((a, b) => kyuToNum(a.kyu) - kyuToNum(b.kyu));
+    } else if (method === 'swiss') {
+      selected.sort((a, b) => getWins(b.id) - getWins(a.id));
+    } else {
+      selected = selected.slice().sort(() => Math.random() - 0.5);
+    }
+
+    // Clear board
+    boardCount = 0;
+    boardPairings = {};
+    document.getElementById('boardRows').innerHTML = '';
+
+    const pairs = Math.floor(selected.length / 2);
+    for (let i = 0; i < pairs; i++) {
+      const flip = Math.random() < 0.5;
+      addBoardRow(
+        flip ? selected[i * 2].id : selected[i * 2 + 1].id,
+        flip ? selected[i * 2 + 1].id : selected[i * 2].id
+      );
+    }
+    // Odd player stays in pool automatically
+    renderAvailablePool();
+  }
 
   function getWins(playerId) {
     return DB.getMatches().filter(m => m.status === 'done' && (
@@ -235,89 +435,32 @@
     )).length;
   }
 
-  function generatePairings() {
-    const method = document.getElementById('pairingMethod').value;
-    let selected = DB.getPlayers().filter(p => checkedIds.has(p.id));
-    if (selected.length < 2) { alert('2名以上を選択してください。'); return null; }
-
-    // ソート
-    if (method === 'kyu') {
-      selected.sort((a, b) => kyuToNum(a.kyu) - kyuToNum(b.kyu));
-    } else if (method === 'swiss') {
-      selected.sort((a, b) => getWins(b.id) - getWins(a.id));
-    } else {
-      selected = selected.sort(() => Math.random() - 0.5);
-    }
-
-    let byePlayer = null;
-    if (selected.length % 2 !== 0) {
-      byePlayer = selected.pop();
-    }
-
-    const pairs = [];
-    for (let i = 0; i < selected.length; i += 2) {
-      // コイントスで先後決定
-      const flip = Math.random() < 0.5;
-      pairs.push({
-        black: flip ? selected[i] : selected[i + 1],
-        white: flip ? selected[i + 1] : selected[i],
-      });
-    }
-    return { pairs, byePlayer };
-  }
-
-  document.getElementById('generateBtn').addEventListener('click', () => {
-    const result = generatePairings();
-    if (!result) return;
-    currentPairings = result.pairs;
-    renderPairings(result);
-  });
-
-  document.getElementById('reshuffleBtn').addEventListener('click', () => {
-    const result = generatePairings();
-    if (!result) return;
-    currentPairings = result.pairs;
-    renderPairings(result);
-  });
-
-  function renderPairings({ pairs, byePlayer }) {
-    document.getElementById('pairingResultCard').style.display = '';
-    const tbody = document.getElementById('pairingBody');
-    tbody.innerHTML = pairs.map((pair, i) => `
-      <tr>
-        <td class="board-number">${i + 1}盤</td>
-        <td><strong>${pair.black.name}</strong></td>
-        <td style="font-size:12px;color:#666">${pair.black.kyu || '―'}</td>
-        <td style="color:#999;text-align:center">vs</td>
-        <td><strong>${pair.white.name}</strong></td>
-        <td style="font-size:12px;color:#666">${pair.white.kyu || '―'}</td>
-      </tr>`).join('');
-
-    const byeEl = document.getElementById('byePlayer');
-    byeEl.innerHTML = byePlayer
-      ? `<span class="bye-badge">不戦</span> <strong>${byePlayer.name}</strong>（${byePlayer.kyu || '―'}）は今回の対局なし`
-      : '';
-  }
-
-  document.getElementById('registerMatchesBtn').addEventListener('click', () => {
-    if (currentPairings.length === 0) return;
+  // Register
+  function registerMatches() {
+    const pairs = Object.values(boardPairings).filter(r => r.black != null && r.white != null);
+    if (pairs.length === 0) { alert('先手・後手が揃っている手合いがありません。'); return; }
     const round = document.getElementById('roundName').value || '手合い';
     const date = document.getElementById('matchDate').value;
-    currentPairings.forEach(pair => {
-      DB.addMatch({
-        date, round,
-        blackId: pair.black.id,
-        whiteId: pair.white.id,
-        result: 'pending',
-        status: 'pending',
-        kifu: '',
-      });
+    pairs.forEach(pair => {
+      DB.addMatch({ date, round, blackId: pair.black, whiteId: pair.white, result: 'pending', status: 'pending', kifu: '' });
     });
-    alert(`${currentPairings.length}局を対局に登録しました。`);
+    alert(`${pairs.length}局を対局に登録しました。`);
+    // Reset board
+    boardCount = 0;
+    boardPairings = {};
+    document.getElementById('boardRows').innerHTML = '';
+    for (let i = 0; i < 3; i++) addBoardRow();
+    renderAvailablePool();
     renderTodayMatches();
-    document.getElementById('pairingResultCard').style.display = 'none';
-    currentPairings = [];
-  });
+  }
+
+  // ===== 本日の対局一覧 =====
+  let pendingResetId = null;
+
+  function playerName(id) {
+    const p = DB.getPlayers().find(x => x.id === id);
+    return p ? p.name : '―';
+  }
 
   function resultLabel(r) {
     if (r === 'black') return '<span class="badge badge-black">先手勝</span>';
@@ -363,8 +506,23 @@
     document.getElementById('resetConfirmModal').classList.add('open');
   }
 
+  document.getElementById('resetConfirmModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('resetConfirmModal'))
+      document.getElementById('resetConfirmModal').classList.remove('open');
+  });
+  document.getElementById('confirmResetBtn').addEventListener('click', () => {
+    if (pendingResetId !== null) {
+      DB.updateMatch(pendingResetId, { result: 'pending', status: 'pending' });
+      pendingResetId = null;
+      document.getElementById('resetConfirmModal').classList.remove('open');
+      renderTodayMatches();
+    }
+  });
+
+  // Initialize
   renderChecklist();
   renderTodayMatches();
+  for (let i = 0; i < 3; i++) addBoardRow();
 </script>
 </body>
 </html>
