@@ -131,12 +131,38 @@
   </div>
 </div>
 
+<!-- 結果取消確認モーダル -->
+<div class="modal-overlay" id="resetConfirmModal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">結果を取り消しますか？</div>
+    <p style="margin:12px 0 20px;color:#555;font-size:14px">この対局の結果を「未了」に戻します。</p>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('resetConfirmModal').classList.remove('open')">いいえ</button>
+      <button class="btn btn-danger" id="confirmResetBtn">はい、取り消す</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/data.js"></script>
 <script>
   if (sessionStorage.getItem('loggedIn') !== '1') { location.href = 'index.html'; }
   document.getElementById('currentUser').textContent = sessionStorage.getItem('userId') || '';
   document.getElementById('logoutBtn').addEventListener('click', e => {
     e.preventDefault(); sessionStorage.clear(); location.href = 'index.html';
+  });
+
+  let pendingResetId = null;
+  document.getElementById('resetConfirmModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('resetConfirmModal'))
+      document.getElementById('resetConfirmModal').classList.remove('open');
+  });
+  document.getElementById('confirmResetBtn').addEventListener('click', () => {
+    if (pendingResetId !== null) {
+      DB.updateMatch(pendingResetId, { result: 'pending', status: 'pending' });
+      pendingResetId = null;
+      document.getElementById('resetConfirmModal').classList.remove('open');
+      renderTodayMatches();
+    }
   });
 
   DB.initSampleData();
@@ -303,7 +329,7 @@
   function renderTodayMatches() {
     const today = new Date().toISOString().split('T')[0];
     const matches = DB.getMatches().filter(m => m.date === today)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .sort((a, b) => (a.id || 0) - (b.id || 0));
     const tbody = document.getElementById('todayMatchesBody');
     if (matches.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">本日の対局なし</td></tr>';
@@ -312,28 +338,29 @@
     tbody.innerHTML = matches.map(m => `
       <tr>
         <td>${m.round || '―'}</td>
-        <td>${playerName(m.blackId)}</td>
-        <td>${playerName(m.whiteId)}</td>
+        <td><strong>${playerName(m.blackId)}</strong></td>
+        <td><strong>${playerName(m.whiteId)}</strong></td>
         <td>${resultLabel(m.result)}</td>
         <td>${m.status === 'done' ? '<span class="badge badge-done">終了</span>' : '<span class="badge badge-pending">対局中</span>'}</td>
-        <td>
-          <button class="btn btn-outline btn-sm" onclick="recordResult(${m.id})">結果入力</button>
+        <td style="white-space:nowrap">
+          ${m.status !== 'done'
+            ? `<button class="btn btn-sm" style="background:#8b3a3a;color:#fff;padding:4px 8px" onclick="setResult(${m.id},'black')">先手勝</button>
+               <button class="btn btn-sm" style="background:#2d4a7a;color:#fff;padding:4px 8px;margin:0 4px" onclick="setResult(${m.id},'white')">後手勝</button>
+               <button class="btn btn-outline btn-sm" style="padding:4px 8px" onclick="setResult(${m.id},'draw')">引分</button>`
+            : `<button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">取消</button>`
+          }
         </td>
       </tr>`).join('');
   }
 
-  function recordResult(matchId) {
-    const m = DB.getMatches().find(x => x.id === matchId);
-    if (!m) return;
-    const black = DB.getPlayers().find(p => p.id === m.blackId);
-    const white = DB.getPlayers().find(p => p.id === m.whiteId);
-    const choice = prompt(
-      `結果を入力してください。\n先手: ${black ? black.name : '?'}\n後手: ${white ? white.name : '?'}\n\n1: 先手勝\n2: 後手勝\n3: 引分`
-    );
-    const map = { '1': 'black', '2': 'white', '3': 'draw' };
-    if (!map[choice]) return;
-    DB.updateMatch(matchId, { result: map[choice], status: 'done' });
+  function setResult(matchId, result) {
+    DB.updateMatch(matchId, { result, status: 'done' });
     renderTodayMatches();
+  }
+
+  function confirmReset(matchId) {
+    pendingResetId = matchId;
+    document.getElementById('resetConfirmModal').classList.add('open');
   }
 
   renderChecklist();

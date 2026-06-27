@@ -186,11 +186,19 @@
         <td>${m.round || '―'}</td>
         <td>${playerName(m.blackId)}</td>
         <td>${playerName(m.whiteId)}</td>
-        <td>${resultLabel(m.result)}</td>
+        <td style="white-space:nowrap">
+          ${m.status !== 'done'
+            ? `<button class="btn btn-sm" style="background:#8b3a3a;color:#fff;padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'black')">先手勝</button>
+               <button class="btn btn-sm" style="background:#2d4a7a;color:#fff;padding:3px 7px;font-size:12px;margin:0 3px" onclick="quickResult(${m.id},'white')">後手勝</button>
+               <button class="btn btn-outline btn-sm" style="padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'draw')">引分</button>`
+            : resultLabel(m.result)
+          }
+        </td>
         <td>${statusLabel(m.status)}</td>
-        <td>
-          <button class="btn btn-outline btn-sm" onclick="openEdit(${m.id})">編集</button>
-          <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="deleteMatch(${m.id})">削除</button>
+        <td style="white-space:nowrap">
+          ${m.status === 'done' ? `<button class="btn btn-outline btn-sm" onclick="resetResult(${m.id})">取消</button>` : ''}
+          <button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="openEdit(${m.id})">編集</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="deleteMatch(${m.id})">削除</button>
         </td>
       </tr>`).join('');
   }
@@ -228,6 +236,19 @@
     document.getElementById('mKifu').value = m.kifu || '';
     populatePlayerSelects(m.blackId, m.whiteId);
     document.getElementById('matchModal').classList.add('open');
+  }
+
+  function quickResult(id, result) {
+    DB.updateMatch(id, { result, status: 'done' });
+    populateRoundFilter();
+    renderMatches();
+  }
+
+  function resetResult(id) {
+    if (!confirm('結果を取り消して「未了」に戻しますか？')) return;
+    DB.updateMatch(id, { result: 'pending', status: 'pending' });
+    populateRoundFilter();
+    renderMatches();
   }
 
   function deleteMatch(id) {
