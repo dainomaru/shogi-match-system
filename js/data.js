@@ -99,7 +99,7 @@ const DB = {
   // データ初期化（さくら将棋教室の実データ）
   initSampleData() {
     // バージョン管理: 対局データを一度リセット
-    const DATA_VER = '3';
+    const DATA_VER = '4';
     if (localStorage.getItem('dataVer') !== DATA_VER) {
       localStorage.removeItem('matches');
       localStorage.setItem('dataVer', DATA_VER);

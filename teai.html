@@ -565,8 +565,9 @@
           ${m.status !== 'done'
             ? `<button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:4px 8px" onclick="setResult(${m.id},'black')">先手勝</button>
                <button class="btn btn-sm" style="background:#0277bd;color:#fff;padding:4px 8px;margin:0 4px" onclick="setResult(${m.id},'white')">後手勝</button>
-               <button class="btn btn-outline btn-sm" style="padding:4px 8px" onclick="setResult(${m.id},'draw')">引分</button>`
-            : `<button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">取消</button>`
+               <button class="btn btn-outline btn-sm" style="padding:4px 8px" onclick="setResult(${m.id},'draw')">引分</button>
+               <button class="btn btn-outline btn-sm" style="padding:4px 8px;margin-left:4px;color:#b71c1c;border-color:#b71c1c" onclick="cancelMatch(${m.id})">× 手合取消</button>`
+            : `<button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">結果取消</button>`
           }
         </td>
       </tr>`).join('');
@@ -592,6 +593,12 @@
               <p style="font-size:18px;margin:4px 0">${p.from} &rarr; <strong>${p.to}</strong>　${kind}！</p>`;
     }).join('<hr style="margin:14px 0;border-color:#eee">');
     document.getElementById('promoModal').classList.add('open');
+  }
+
+  function cancelMatch(matchId) {
+    if (!confirm('この手合いを取り消し（削除）しますか？')) return;
+    DB.deleteMatch(matchId);
+    renderTodayMatches();
   }
 
   function confirmReset(matchId) {
