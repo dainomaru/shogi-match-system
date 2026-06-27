@@ -49,6 +49,30 @@ const DB = {
   // 段級位順序（昇順）
   RANK_ORDER: ['30級','29級','28級','27級','26級','25級','24級','23級','22級','21級','20級','19級','18級','17級','16級','15級','14級','13級','12級','11級','10級','9級','8級','7級','6級','5級','4級','3級','2級','1級','初段','二段','三段','四段','五段','六段','七段','八段','九段'],
 
+  TEAI_LIST: ['平手','香落ち','角落ち','飛車落ち','飛車香落ち','二枚落ち','四枚落ち','六枚落ち','八枚落ち','十枚落ち'],
+
+  // 棋力差から手合い割と上手を計算
+  // upper: 'black'=先手が上手, 'white'=後手が上手, null=平手
+  calcTeai(kyuBlack, kyuWhite) {
+    const idxB = this.RANK_ORDER.indexOf(kyuBlack);
+    const idxW = this.RANK_ORDER.indexOf(kyuWhite);
+    if (idxB === -1 || idxW === -1) return { teai: '平手', upper: null };
+    const diff = Math.abs(idxB - idxW);
+    const upper = idxW > idxB ? 'white' : (idxB > idxW ? 'black' : null);
+    let teai;
+    if (diff <= 2) teai = '平手';
+    else if (diff <= 3) teai = '香落ち';
+    else if (diff <= 4) teai = '角落ち';
+    else if (diff <= 5) teai = '飛車落ち';
+    else if (diff <= 6) teai = '飛車香落ち';
+    else if (diff <= 8) teai = '二枚落ち';
+    else if (diff <= 10) teai = '四枚落ち';
+    else if (diff <= 12) teai = '六枚落ち';
+    else if (diff <= 14) teai = '八枚落ち';
+    else teai = '十枚落ち';
+    return { teai, upper: teai === '平手' ? null : upper };
+  },
+
   nextRank(kyu) {
     const idx = this.RANK_ORDER.indexOf(kyu);
     if (idx === -1 || idx >= this.RANK_ORDER.length - 1) return null;

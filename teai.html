@@ -161,6 +161,7 @@
                   <th>先手</th>
                   <th class="vs-cell"></th>
                   <th>後手</th>
+                  <th style="min-width:120px">手合い</th>
                   <th style="width:44px"></th>
                 </tr>
               </thead>
@@ -190,7 +191,7 @@
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>ラウンド</th><th>先手</th><th>後手</th><th>結果</th><th>状態</th><th>操作</th></tr>
+              <tr><th>ラウンド</th><th>先手</th><th>後手</th><th>手合い</th><th>結果</th><th>状態</th><th>操作</th></tr>
             </thead>
             <tbody id="todayMatchesBody"></tbody>
           </table>
@@ -293,7 +294,7 @@
   function addBoardRow(blackId, whiteId) {
     boardCount++;
     const num = boardCount;
-    boardPairings[num] = { black: blackId ?? null, white: whiteId ?? null };
+    boardPairings[num] = { black: blackId ?? null, white: whiteId ?? null, teai: null };
     const tbody = document.getElementById('boardRows');
     const tr = document.createElement('tr');
     tr.dataset.board = num;
@@ -306,6 +307,7 @@
       <td><div class="drop-zone" id="slot-${num}-white"
         ondragover="slotDragOver(event)" ondrop="slotDrop(event,${num},'white')"
         ondragenter="slotDragEnter(event)" ondragleave="slotDragLeave(event)"></div></td>
+      <td id="teai-cell-${num}" style="font-size:12px"><span style="color:#ccc;font-size:12px">―</span></td>
       <td><button class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 6px" onclick="clearRow(${num})">×</button></td>
     `;
     tbody.appendChild(tr);
@@ -334,6 +336,7 @@
       slot.className = 'drop-zone';
       slot.innerHTML = '';
     }
+    renderTeaiCell(boardNum);
   }
 
   function renderAvailablePool() {
@@ -357,6 +360,31 @@
     });
   }
 
+  function renderTeaiCell(boardNum) {
+    const cell = document.getElementById(`teai-cell-${boardNum}`);
+    if (!cell) return;
+    const pair = boardPairings[boardNum];
+    if (!pair || pair.black == null || pair.white == null) {
+      cell.innerHTML = '<span style="color:#ccc;font-size:12px">―</span>';
+      return;
+    }
+    const pB = DB.getPlayers().find(p => p.id === pair.black);
+    const pW = DB.getPlayers().find(p => p.id === pair.white);
+    const auto = DB.calcTeai(pB?.kyu, pW?.kyu);
+    const currentTeai = pair.teai || auto.teai;
+    const upperNote = auto.upper
+      ? `<div style="font-size:10px;color:#888;margin-top:2px">${auto.upper === 'black' ? '先手' : '後手'}が上手</div>`
+      : '';
+    cell.innerHTML = `<select onchange="setTeai(${boardNum},this.value)"
+      style="font-size:12px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;background:#fff;max-width:110px">
+      ${DB.TEAI_LIST.map(t => `<option value="${t}"${t === currentTeai ? ' selected' : ''}>${t}</option>`).join('')}
+    </select>${upperNote}`;
+  }
+
+  function setTeai(boardNum, value) {
+    if (boardPairings[boardNum]) boardPairings[boardNum].teai = value;
+  }
+
   function removePlayerFromBoard(playerId) {
     Object.keys(boardPairings).forEach(num => {
       if (boardPairings[num].black === playerId) boardPairings[num].black = null;
@@ -366,13 +394,13 @@
   }
 
   function clearRow(boardNum) {
-    boardPairings[boardNum] = { black: null, white: null };
+    boardPairings[boardNum] = { black: null, white: null, teai: null };
     renderPairingUI();
   }
 
   function clearAllPairings() {
     Object.keys(boardPairings).forEach(num => {
-      boardPairings[num] = { black: null, white: null };
+      boardPairings[num] = { black: null, white: null, teai: null };
     });
     renderPairingUI();
   }
@@ -401,7 +429,9 @@
     if (!dragData || dragData.sourceKey === 'pool') { dragData = null; return; }
     const { sourceKey } = dragData;
     const parts = sourceKey.split('-'); // slot-N-side
-    boardPairings[parseInt(parts[1])][parts[2]] = null;
+    const srcBoard = parseInt(parts[1]);
+    boardPairings[srcBoard][parts[2]] = null;
+    boardPairings[srcBoard].teai = null;
     renderPairingUI();
     dragData = null;
   }
@@ -423,12 +453,15 @@
 
     const targetOccupant = boardPairings[targetBoard][targetSide];
     boardPairings[targetBoard][targetSide] = playerId;
+    boardPairings[targetBoard].teai = null;
 
     if (sourceKey !== 'pool') {
       // Slot → Slot: swap
       const parts = sourceKey.split('-');
-      boardPairings[parseInt(parts[1])][parts[2]] = targetOccupant;
-      renderSlot(parseInt(parts[1]), parts[2]);
+      const srcBoard = parseInt(parts[1]);
+      boardPairings[srcBoard][parts[2]] = targetOccupant;
+      boardPairings[srcBoard].teai = null;
+      renderSlot(srcBoard, parts[2]);
     }
     // Pool → Slot: displaced player auto-returns to pool via renderAvailablePool
 
@@ -481,7 +514,10 @@
     const round = document.getElementById('roundName').value || '手合い';
     const date = document.getElementById('matchDate').value;
     pairs.forEach(pair => {
-      DB.addMatch({ date, round, blackId: pair.black, whiteId: pair.white, result: 'pending', status: 'pending', kifu: '' });
+      const pB = DB.getPlayers().find(p => p.id === pair.black);
+      const pW = DB.getPlayers().find(p => p.id === pair.white);
+      const teai = pair.teai || DB.calcTeai(pB?.kyu, pW?.kyu).teai || '平手';
+      DB.addMatch({ date, round, blackId: pair.black, whiteId: pair.white, teai, result: 'pending', status: 'pending', kifu: '' });
     });
     alert(`${pairs.length}局を対局に登録しました。`);
     // Reset board
@@ -514,7 +550,7 @@
       .sort((a, b) => (a.id || 0) - (b.id || 0));
     const tbody = document.getElementById('todayMatchesBody');
     if (matches.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">本日の対局なし</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#999">本日の対局なし</td></tr>';
       return;
     }
     tbody.innerHTML = matches.map(m => `
@@ -522,6 +558,7 @@
         <td>${m.round || '―'}</td>
         <td><strong>${playerName(m.blackId)}</strong></td>
         <td><strong>${playerName(m.whiteId)}</strong></td>
+        <td>${m.teai || '平手'}</td>
         <td>${resultLabel(m.result)}</td>
         <td>${m.status === 'done' ? '<span class="badge badge-done">終了</span>' : '<span class="badge badge-pending">対局中</span>'}</td>
         <td style="white-space:nowrap">

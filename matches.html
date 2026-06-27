@@ -86,13 +86,14 @@
                 <th>ラウンド</th>
                 <th>先手</th>
                 <th>後手</th>
+                <th>手合い</th>
                 <th>結果</th>
                 <th>状態</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody id="matchesBody">
-              <tr><td colspan="7" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
+              <tr><td colspan="8" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
             </tbody>
           </table>
         </div>
@@ -139,6 +140,26 @@
           <select id="mWhite" required>
             <option value="">選択してください</option>
           </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>手合い</label>
+          <select id="mTeai">
+            <option value="平手">平手</option>
+            <option value="香落ち">香落ち</option>
+            <option value="角落ち">角落ち</option>
+            <option value="飛車落ち">飛車落ち</option>
+            <option value="飛車香落ち">飛車香落ち</option>
+            <option value="二枚落ち">二枚落ち</option>
+            <option value="四枚落ち">四枚落ち</option>
+            <option value="六枚落ち">六枚落ち</option>
+            <option value="八枚落ち">八枚落ち</option>
+            <option value="十枚落ち">十枚落ち</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div id="mTeaiNote" style="font-size:12px;color:#888;padding-top:22px;line-height:1.4"></div>
         </div>
       </div>
       <div class="form-row">
@@ -216,7 +237,7 @@
 
     const tbody = document.getElementById('matchesBody');
     if (matches.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#999">対局データなし</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#999">対局データなし</td></tr>';
       return;
     }
     tbody.innerHTML = matches.map(m => `
@@ -225,6 +246,7 @@
         <td>${m.round || '―'}</td>
         <td>${playerName(m.blackId)}</td>
         <td>${playerName(m.whiteId)}</td>
+        <td>${m.teai || '平手'}</td>
         <td style="white-space:nowrap">
           ${m.status !== 'done'
             ? `<button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'black')">先手勝</button>
@@ -251,11 +273,27 @@
     if (whiteVal) document.getElementById('mWhite').value = whiteVal;
   }
 
+  function updateAutoTeai() {
+    const blackId = parseInt(document.getElementById('mBlack').value);
+    const whiteId = parseInt(document.getElementById('mWhite').value);
+    const noteEl = document.getElementById('mTeaiNote');
+    if (!blackId || !whiteId || blackId === whiteId) { noteEl.textContent = ''; return; }
+    const pB = DB.getPlayers().find(p => p.id === blackId);
+    const pW = DB.getPlayers().find(p => p.id === whiteId);
+    const auto = DB.calcTeai(pB?.kyu, pW?.kyu);
+    document.getElementById('mTeai').value = auto.teai;
+    noteEl.innerHTML = auto.upper
+      ? `棋力差より自動設定<br>${auto.upper === 'black' ? '先手' : '後手'}が上手`
+      : '棋力差より自動設定<br>平手';
+  }
+
   function openAdd() {
     document.getElementById('modalTitle').textContent = '対局を追加';
     document.getElementById('editId').value = '';
     document.getElementById('mDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('mRound').value = '';
+    document.getElementById('mTeai').value = '平手';
+    document.getElementById('mTeaiNote').textContent = '';
     document.getElementById('mResult').value = 'pending';
     document.getElementById('mStatus').value = 'pending';
     document.getElementById('mKifu').value = '';
@@ -270,6 +308,8 @@
     document.getElementById('editId').value = id;
     document.getElementById('mDate').value = m.date;
     document.getElementById('mRound').value = m.round || '';
+    document.getElementById('mTeai').value = m.teai || '平手';
+    document.getElementById('mTeaiNote').textContent = '';
     document.getElementById('mResult').value = m.result || 'pending';
     document.getElementById('mStatus').value = m.status || 'pending';
     document.getElementById('mKifu').value = m.kifu || '';
@@ -314,6 +354,8 @@
     renderMatches();
   }
 
+  document.getElementById('mBlack').addEventListener('change', updateAutoTeai);
+  document.getElementById('mWhite').addEventListener('change', updateAutoTeai);
   document.getElementById('addMatchBtn').addEventListener('click', openAdd);
   document.getElementById('cancelModal').addEventListener('click', () => {
     document.getElementById('matchModal').classList.remove('open');
@@ -334,6 +376,7 @@
       round: document.getElementById('mRound').value,
       blackId,
       whiteId,
+      teai: document.getElementById('mTeai').value || '平手',
       result: document.getElementById('mResult').value,
       status: document.getElementById('mStatus').value,
       kifu: document.getElementById('mKifu').value,
