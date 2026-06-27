@@ -172,6 +172,16 @@
   </div>
 </div>
 
+<!-- 昇格通知モーダル -->
+<div class="modal-overlay" id="promoModal">
+  <div class="modal" style="max-width:400px;text-align:center;padding:32px 24px">
+    <div style="font-size:52px;line-height:1.1;margin-bottom:8px">&#127881;</div>
+    <div class="modal-title" style="font-size:20px;margin-bottom:16px">昇格おめでとうございます！</div>
+    <div id="promoContent" style="margin:0 0 24px"></div>
+    <button class="btn btn-primary" style="min-width:120px" onclick="document.getElementById('promoModal').classList.remove('open')">閉じる</button>
+  </div>
+</div>
+
 <!-- 結果取消確認モーダル -->
 <div class="modal-overlay" id="resetConfirmModal">
   <div class="modal" style="max-width:360px">
@@ -497,8 +507,25 @@
   }
 
   function setResult(matchId, result) {
+    const m = DB.getMatches().find(x => x.id === matchId);
+    const wasPending = m && m.status !== 'done';
     DB.updateMatch(matchId, { result, status: 'done' });
+    if (wasPending) {
+      const promotions = [];
+      if (result === 'black') { const p = DB.recordWin(m.blackId); if (p) promotions.push(p); }
+      else if (result === 'white') { const p = DB.recordWin(m.whiteId); if (p) promotions.push(p); }
+      if (promotions.length) showPromotions(promotions);
+    }
     renderTodayMatches();
+  }
+
+  function showPromotions(list) {
+    document.getElementById('promoContent').innerHTML = list.map(p => {
+      const kind = ['初段','二段','三段','四段','五段','六段','七段','八段','九段'].includes(p.to) ? '昇段' : '昇級';
+      return `<p style="font-size:16px;font-weight:bold;color:#8b3a3a;margin:4px 0">${p.name} さん</p>
+              <p style="font-size:18px;margin:4px 0">${p.from} &rarr; <strong>${p.to}</strong>　${kind}！</p>`;
+    }).join('<hr style="margin:14px 0;border-color:#eee">');
+    document.getElementById('promoModal').classList.add('open');
   }
 
   function confirmReset(matchId) {

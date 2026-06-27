@@ -46,6 +46,32 @@ const DB = {
     this.saveMatches(this.getMatches().filter(m => m.id !== id));
   },
 
+  // 段級位順序（昇順）
+  RANK_ORDER: ['30級','29級','28級','27級','26級','25級','24級','23級','22級','21級','20級','19級','18級','17級','16級','15級','14級','13級','12級','11級','10級','9級','8級','7級','6級','5級','4級','3級','2級','1級','初段','二段','三段','四段','五段','六段','七段','八段','九段'],
+
+  nextRank(kyu) {
+    const idx = this.RANK_ORDER.indexOf(kyu);
+    if (idx === -1 || idx >= this.RANK_ORDER.length - 1) return null;
+    return this.RANK_ORDER[idx + 1];
+  },
+
+  // 勝利を記録し、昇格条件を満たした場合は昇格して情報を返す
+  // 昇格なし → null, 昇格あり → { name, from, to }
+  recordWin(playerId) {
+    const player = this.getPlayers().find(p => p.id === playerId);
+    if (!player || !player.kyu) return null;
+    const isDan = ['初段','二段','三段','四段','五段','六段','七段','八段','九段'].includes(player.kyu);
+    const threshold = isDan ? 5 : 3;
+    const wins = (player.levelWins || 0) + 1;
+    const next = this.nextRank(player.kyu);
+    if (next && wins >= threshold) {
+      this.updatePlayer(playerId, { kyu: next, levelWins: 0 });
+      return { playerId, name: player.name, from: player.kyu, to: next };
+    }
+    this.updatePlayer(playerId, { levelWins: wins });
+    return null;
+  },
+
   // データ初期化（さくら将棋教室の実データ）
   initSampleData() {
     if (this.getPlayers().length > 0) return;

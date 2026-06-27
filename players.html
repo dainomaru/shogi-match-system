@@ -137,7 +137,20 @@
   }
 
   function updateKyu(id, kyu) {
-    DB.updatePlayer(id, { kyu });
+    DB.updatePlayer(id, { kyu, levelWins: 0 });
+  }
+
+  function promoProgress(p) {
+    if (!p.kyu || !DB.nextRank(p.kyu)) return '';
+    const isDan = ['初段','二段','三段','四段','五段','六段','七段','八段','九段'].includes(p.kyu);
+    const threshold = isDan ? 5 : 3;
+    const wins = p.levelWins || 0;
+    const pct = Math.round(wins / threshold * 100);
+    return `<div style="margin-top:3px;font-size:11px;color:#888">${wins}/${threshold}勝
+      <span style="display:inline-block;width:48px;height:5px;background:#eee;border-radius:3px;vertical-align:middle;margin-left:3px">
+        <span style="display:block;width:${pct}%;height:100%;background:#8b3a3a;border-radius:3px"></span>
+      </span>
+    </div>`;
   }
 
   function getStats(playerId) {
@@ -173,6 +186,7 @@
             <select onchange="updateKyu(${p.id}, this.value)" style="font-size:13px;padding:2px 6px;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer">
               ${kyuOptions(p.kyu)}
             </select>
+            ${promoProgress(p)}
           </td>
           <td><span class="badge ${p.memberType === '指導員' ? 'badge-black' : 'badge-pending'}">${p.memberType || '正会員'}</span></td>
           <td>${s.wins}</td>
