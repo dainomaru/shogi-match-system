@@ -1,0 +1,388 @@
+/* ==================== Reset & Base ==================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+a { color: #8b3a3a; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ==================== Login ==================== */
+.login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d1b1b 100%);
+}
+
+.login-container {
+  background: #fff;
+  border-radius: 8px;
+  padding: 40px 48px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo-icon {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.login-logo h1 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2d1b1b;
+}
+
+.login-form .form-group {
+  margin-bottom: 20px;
+}
+
+.login-form label {
+  display: block;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #444;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 15px;
+  transition: border-color 0.2s;
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: #8b3a3a;
+  box-shadow: 0 0 0 2px rgba(139,58,58,0.15);
+}
+
+.form-error {
+  color: #c0392b;
+  font-size: 13px;
+  margin-bottom: 12px;
+  min-height: 18px;
+}
+
+.site-footer {
+  margin-top: 32px;
+  display: flex;
+  gap: 24px;
+  font-size: 12px;
+}
+
+.site-footer a { color: #ccc; }
+.site-footer a:hover { color: #fff; }
+
+/* ==================== Buttons ==================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-primary { background: #8b3a3a; color: #fff; }
+.btn-primary:hover { background: #a04444; }
+.btn-secondary { background: #555; color: #fff; }
+.btn-secondary:hover { background: #444; }
+.btn-success { background: #2e7d32; color: #fff; }
+.btn-success:hover { background: #388e3c; }
+.btn-danger { background: #c0392b; color: #fff; }
+.btn-danger:hover { background: #d44; }
+.btn-outline { background: transparent; border: 1px solid #8b3a3a; color: #8b3a3a; }
+.btn-outline:hover { background: #8b3a3a; color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-full { width: 100%; }
+
+/* ==================== App Layout ==================== */
+.app-wrapper { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: #2d1b1b;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+}
+
+.sidebar-logo .logo-icon { font-size: 32px; }
+.sidebar-logo h2 { font-size: 14px; margin-top: 4px; line-height: 1.4; }
+
+.sidebar-nav { flex: 1; padding: 16px 0; }
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  text-decoration: none;
+}
+
+.sidebar-nav a .nav-icon { font-size: 18px; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+}
+
+.sidebar-footer a { color: rgba(255,255,255,0.6); }
+.sidebar-footer a:hover { color: #fff; }
+
+.main-content {
+  margin-left: 220px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar-title { font-size: 18px; font-weight: bold; color: #2d1b1b; }
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.page-body { padding: 32px; }
+
+/* ==================== Cards ==================== */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #2d1b1b;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #8b3a3a;
+}
+
+/* ==================== Stats Grid ==================== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  text-align: center;
+  border-left: 4px solid #8b3a3a;
+}
+
+.stat-number { font-size: 36px; font-weight: bold; color: #8b3a3a; }
+.stat-label { font-size: 13px; color: #666; margin-top: 4px; }
+
+/* ==================== Table ==================== */
+.table-wrapper { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead th {
+  background: #2d1b1b;
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: bold;
+}
+
+tbody tr { border-bottom: 1px solid #eee; }
+tbody tr:hover { background: #fdf6f6; }
+tbody td { padding: 10px 14px; }
+
+/* ==================== Badges ==================== */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.badge-black { background: #333; color: #fff; }
+.badge-white { background: #e8e8e8; color: #333; border: 1px solid #ccc; }
+.badge-draw { background: #f0a500; color: #fff; }
+.badge-pending { background: #1565c0; color: #fff; }
+.badge-done { background: #2e7d32; color: #fff; }
+
+/* ==================== Forms ==================== */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group { margin-bottom: 16px; }
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #444;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #8b3a3a;
+  box-shadow: 0 0 0 2px rgba(139,58,58,0.15);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* ==================== Modal ==================== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 32px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2d1b1b;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #8b3a3a;
+}
+
+/* ==================== Section header ==================== */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-header h2 { font-size: 18px; color: #2d1b1b; }
+
+/* ==================== Empty state ==================== */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #999;
+}
+
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ==================== Responsive ==================== */
+@media (max-width: 768px) {
+  .sidebar { width: 60px; min-width: 60px; }
+  .sidebar-logo h2,
+  .sidebar-nav a span:not(.nav-icon),
+  .sidebar-footer { display: none; }
+  .sidebar-logo { padding: 16px 8px; }
+  .sidebar-nav a { justify-content: center; padding: 14px; }
+  .main-content { margin-left: 60px; }
+  .form-row { grid-template-columns: 1fr; }
+  .page-body { padding: 16px; }
+}

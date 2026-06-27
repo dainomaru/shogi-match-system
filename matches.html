@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>対局管理 | 将棋手合いシステム</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-wrapper">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#9750;</div>
+      <h2>将棋手合いシステム</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><span class="nav-icon">&#128200;</span><span>ダッシュボード</span></a>
+      <a href="matches.html" class="active"><span class="nav-icon">&#9822;</span><span>対局管理</span></a>
+      <a href="players.html"><span class="nav-icon">&#128100;</span><span>棋士管理</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" id="logoutBtn">ログアウト</a>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">対局管理</div>
+      <div class="topbar-user"><span id="currentUser"></span> さん</div>
+    </header>
+
+    <main class="page-body">
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title" style="margin:0;border:none;padding:0">対局一覧</div>
+          <button class="btn btn-primary btn-sm" id="addMatchBtn">＋ 対局追加</button>
+        </div>
+
+        <!-- フィルター -->
+        <div style="display:flex;gap:12px;margin:16px 0;flex-wrap:wrap">
+          <select id="filterRound" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+            <option value="">ラウンド: 全て</option>
+          </select>
+          <select id="filterStatus" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+            <option value="">状態: 全て</option>
+            <option value="pending">未了</option>
+            <option value="done">終了</option>
+          </select>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>ラウンド</th>
+                <th>先手</th>
+                <th>後手</th>
+                <th>結果</th>
+                <th>状態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="matchesBody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- 対局追加・編集モーダル -->
+<div class="modal-overlay" id="matchModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">対局を追加</div>
+    <form id="matchForm">
+      <input type="hidden" id="editId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>日付 *</label>
+          <input type="date" id="mDate" required>
+        </div>
+        <div class="form-group">
+          <label>ラウンド</label>
+          <input type="text" id="mRound" placeholder="例：第1回戦">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>先手 *</label>
+          <select id="mBlack" required>
+            <option value="">選択してください</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>後手 *</label>
+          <select id="mWhite" required>
+            <option value="">選択してください</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>結果</label>
+          <select id="mResult">
+            <option value="pending">未了</option>
+            <option value="black">先手勝</option>
+            <option value="white">後手勝</option>
+            <option value="draw">引分</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>状態</label>
+          <select id="mStatus">
+            <option value="pending">未了</option>
+            <option value="done">終了</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>棋譜メモ</label>
+        <textarea id="mKifu" rows="3" placeholder="棋譜や備考を入力"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="cancelModal">キャンセル</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  if (sessionStorage.getItem('loggedIn') !== '1') { location.href = 'index.html'; }
+  document.getElementById('currentUser').textContent = sessionStorage.getItem('userId') || '';
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault(); sessionStorage.clear(); location.href = 'index.html';
+  });
+
+  DB.initSampleData();
+
+  function playerName(id) {
+    const p = DB.getPlayers().find(x => x.id === id);
+    return p ? p.name : '―';
+  }
+
+  function resultLabel(r) {
+    if (r === 'black') return '<span class="badge badge-black">先手勝</span>';
+    if (r === 'white') return '<span class="badge badge-white">後手勝</span>';
+    if (r === 'draw')  return '<span class="badge badge-draw">引分</span>';
+    return '<span class="badge badge-pending">未了</span>';
+  }
+
+  function statusLabel(s) {
+    return s === 'done'
+      ? '<span class="badge badge-done">終了</span>'
+      : '<span class="badge badge-pending">未了</span>';
+  }
+
+  function populateRoundFilter() {
+    const rounds = [...new Set(DB.getMatches().map(m => m.round).filter(Boolean))];
+    const sel = document.getElementById('filterRound');
+    sel.innerHTML = '<option value="">ラウンド: 全て</option>' +
+      rounds.map(r => `<option value="${r}">${r}</option>`).join('');
+  }
+
+  function renderMatches() {
+    const roundFilter = document.getElementById('filterRound').value;
+    const statusFilter = document.getElementById('filterStatus').value;
+    let matches = DB.getMatches();
+    if (roundFilter) matches = matches.filter(m => m.round === roundFilter);
+    if (statusFilter) matches = matches.filter(m => m.status === statusFilter);
+    matches.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const tbody = document.getElementById('matchesBody');
+    if (matches.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#999">対局データなし</td></tr>';
+      return;
+    }
+    tbody.innerHTML = matches.map(m => `
+      <tr>
+        <td>${m.date}</td>
+        <td>${m.round || '―'}</td>
+        <td>${playerName(m.blackId)}</td>
+        <td>${playerName(m.whiteId)}</td>
+        <td>${resultLabel(m.result)}</td>
+        <td>${statusLabel(m.status)}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="openEdit(${m.id})">編集</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="deleteMatch(${m.id})">削除</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function populatePlayerSelects(blackVal, whiteVal) {
+    const players = DB.getPlayers();
+    const opts = players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    document.getElementById('mBlack').innerHTML = '<option value="">選択してください</option>' + opts;
+    document.getElementById('mWhite').innerHTML = '<option value="">選択してください</option>' + opts;
+    if (blackVal) document.getElementById('mBlack').value = blackVal;
+    if (whiteVal) document.getElementById('mWhite').value = whiteVal;
+  }
+
+  function openAdd() {
+    document.getElementById('modalTitle').textContent = '対局を追加';
+    document.getElementById('editId').value = '';
+    document.getElementById('mDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('mRound').value = '';
+    document.getElementById('mResult').value = 'pending';
+    document.getElementById('mStatus').value = 'pending';
+    document.getElementById('mKifu').value = '';
+    populatePlayerSelects('', '');
+    document.getElementById('matchModal').classList.add('open');
+  }
+
+  function openEdit(id) {
+    const m = DB.getMatches().find(x => x.id === id);
+    if (!m) return;
+    document.getElementById('modalTitle').textContent = '対局を編集';
+    document.getElementById('editId').value = id;
+    document.getElementById('mDate').value = m.date;
+    document.getElementById('mRound').value = m.round || '';
+    document.getElementById('mResult').value = m.result || 'pending';
+    document.getElementById('mStatus').value = m.status || 'pending';
+    document.getElementById('mKifu').value = m.kifu || '';
+    populatePlayerSelects(m.blackId, m.whiteId);
+    document.getElementById('matchModal').classList.add('open');
+  }
+
+  function deleteMatch(id) {
+    if (!confirm('この対局を削除しますか？')) return;
+    DB.deleteMatch(id);
+    populateRoundFilter();
+    renderMatches();
+  }
+
+  document.getElementById('addMatchBtn').addEventListener('click', openAdd);
+  document.getElementById('cancelModal').addEventListener('click', () => {
+    document.getElementById('matchModal').classList.remove('open');
+  });
+  document.getElementById('matchModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('matchModal'))
+      document.getElementById('matchModal').classList.remove('open');
+  });
+
+  document.getElementById('matchForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const blackId = parseInt(document.getElementById('mBlack').value);
+    const whiteId = parseInt(document.getElementById('mWhite').value);
+    if (blackId === whiteId) { alert('先手と後手に同じ棋士は選択できません。'); return; }
+
+    const data = {
+      date: document.getElementById('mDate').value,
+      round: document.getElementById('mRound').value,
+      blackId,
+      whiteId,
+      result: document.getElementById('mResult').value,
+      status: document.getElementById('mStatus').value,
+      kifu: document.getElementById('mKifu').value,
+    };
+
+    const editId = document.getElementById('editId').value;
+    if (editId) {
+      DB.updateMatch(parseInt(editId), data);
+    } else {
+      DB.addMatch(data);
+    }
+    document.getElementById('matchModal').classList.remove('open');
+    populateRoundFilter();
+    renderMatches();
+  });
+
+  document.getElementById('filterRound').addEventListener('change', renderMatches);
+  document.getElementById('filterStatus').addEventListener('change', renderMatches);
+
+  populateRoundFilter();
+  renderMatches();
+</script>
+</body>
+</html>

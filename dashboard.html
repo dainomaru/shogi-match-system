@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダッシュボード | 将棋手合いシステム</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- サイドバー -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#9750;</div>
+      <h2>将棋手合いシステム</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="active"><span class="nav-icon">&#128200;</span><span>ダッシュボード</span></a>
+      <a href="matches.html"><span class="nav-icon">&#9822;</span><span>対局管理</span></a>
+      <a href="players.html"><span class="nav-icon">&#128100;</span><span>棋士管理</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" id="logoutBtn">ログアウト</a>
+    </div>
+  </aside>
+
+  <!-- メインコンテンツ -->
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">ダッシュボード</div>
+      <div class="topbar-user">
+        <span id="currentUser"></span> さん
+      </div>
+    </header>
+
+    <main class="page-body">
+      <!-- 統計カード -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="statPlayers">0</div>
+          <div class="stat-label">登録棋士数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statMatches">0</div>
+          <div class="stat-label">総対局数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statDone">0</div>
+          <div class="stat-label">終了対局</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statPending">0</div>
+          <div class="stat-label">未了対局</div>
+        </div>
+      </div>
+
+      <!-- 直近の対局 -->
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title" style="margin:0;border:none;padding:0">直近の対局</div>
+          <a href="matches.html" class="btn btn-outline btn-sm">全て見る</a>
+        </div>
+        <div class="table-wrapper" style="margin-top:16px">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>ラウンド</th>
+                <th>先手</th>
+                <th>後手</th>
+                <th>結果</th>
+                <th>状態</th>
+              </tr>
+            </thead>
+            <tbody id="recentMatchesBody">
+              <tr><td colspan="6" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 棋士ランキング -->
+      <div class="card">
+        <div class="card-title">棋士成績ランキング</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>順位</th><th>棋士名</th><th>段位</th><th>勝</th><th>負</th><th>引分</th><th>勝率</th></tr>
+            </thead>
+            <tbody id="rankingBody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/auth.js" type="module"></script>
+<script src="js/data.js"></script>
+<script>
+  // 認証チェック
+  if (sessionStorage.getItem('loggedIn') !== '1') { location.href = 'index.html'; }
+  document.getElementById('currentUser').textContent = sessionStorage.getItem('userId') || '';
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault();
+    sessionStorage.clear();
+    location.href = 'index.html';
+  });
+
+  DB.initSampleData();
+
+  function resultLabel(r) {
+    if (r === 'black') return '<span class="badge badge-black">先手勝</span>';
+    if (r === 'white') return '<span class="badge badge-white">後手勝</span>';
+    if (r === 'draw')  return '<span class="badge badge-draw">引分</span>';
+    return '<span class="badge badge-pending">未了</span>';
+  }
+
+  function statusLabel(s) {
+    return s === 'done'
+      ? '<span class="badge badge-done">終了</span>'
+      : '<span class="badge badge-pending">未了</span>';
+  }
+
+  function playerName(id) {
+    const p = DB.getPlayers().find(x => x.id === id);
+    return p ? p.name : '―';
+  }
+
+  function renderDashboard() {
+    const players = DB.getPlayers();
+    const matches = DB.getMatches();
+    const done = matches.filter(m => m.status === 'done');
+    const pending = matches.filter(m => m.status !== 'done');
+
+    document.getElementById('statPlayers').textContent = players.length;
+    document.getElementById('statMatches').textContent = matches.length;
+    document.getElementById('statDone').textContent = done.length;
+    document.getElementById('statPending').textContent = pending.length;
+
+    // 直近5件
+    const recent = [...matches].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+    const tbody = document.getElementById('recentMatchesBody');
+    if (recent.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">対局データなし</td></tr>';
+    } else {
+      tbody.innerHTML = recent.map(m => `
+        <tr>
+          <td>${m.date}</td>
+          <td>${m.round || '―'}</td>
+          <td>${playerName(m.blackId)}</td>
+          <td>${playerName(m.whiteId)}</td>
+          <td>${resultLabel(m.result)}</td>
+          <td>${statusLabel(m.status)}</td>
+        </tr>`).join('');
+    }
+
+    // ランキング
+    const stats = {};
+    players.forEach(p => { stats[p.id] = { wins: 0, losses: 0, draws: 0 }; });
+    matches.filter(m => m.status === 'done').forEach(m => {
+      if (!stats[m.blackId]) stats[m.blackId] = { wins: 0, losses: 0, draws: 0 };
+      if (!stats[m.whiteId]) stats[m.whiteId] = { wins: 0, losses: 0, draws: 0 };
+      if (m.result === 'black') { stats[m.blackId].wins++; stats[m.whiteId].losses++; }
+      else if (m.result === 'white') { stats[m.whiteId].wins++; stats[m.blackId].losses++; }
+      else if (m.result === 'draw') { stats[m.blackId].draws++; stats[m.whiteId].draws++; }
+    });
+
+    const ranked = players.map(p => {
+      const s = stats[p.id] || { wins: 0, losses: 0, draws: 0 };
+      const total = s.wins + s.losses + s.draws;
+      const rate = total > 0 ? (s.wins / total * 100).toFixed(1) : '―';
+      return { ...p, ...s, rate };
+    }).sort((a, b) => {
+      const ra = typeof a.rate === 'string' ? -1 : parseFloat(a.rate);
+      const rb = typeof b.rate === 'string' ? -1 : parseFloat(b.rate);
+      return rb - ra;
+    });
+
+    const rbody = document.getElementById('rankingBody');
+    if (ranked.length === 0) {
+      rbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#999">棋士データなし</td></tr>';
+    } else {
+      rbody.innerHTML = ranked.map((p, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${p.name}</td>
+          <td>${p.kyu || '―'}</td>
+          <td>${p.wins}</td>
+          <td>${p.losses}</td>
+          <td>${p.draws}</td>
+          <td>${p.rate !== '―' ? p.rate + '%' : '―'}</td>
+        </tr>`).join('');
+    }
+  }
+
+  renderDashboard();
+</script>
+</body>
+</html>

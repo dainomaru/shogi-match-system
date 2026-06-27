@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>棋士管理 | 将棋手合いシステム</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-wrapper">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#9750;</div>
+      <h2>将棋手合いシステム</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><span class="nav-icon">&#128200;</span><span>ダッシュボード</span></a>
+      <a href="matches.html"><span class="nav-icon">&#9822;</span><span>対局管理</span></a>
+      <a href="players.html" class="active"><span class="nav-icon">&#128100;</span><span>棋士管理</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" id="logoutBtn">ログアウト</a>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">棋士管理</div>
+      <div class="topbar-user"><span id="currentUser"></span> さん</div>
+    </header>
+
+    <main class="page-body">
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title" style="margin:0;border:none;padding:0">棋士一覧</div>
+          <button class="btn btn-primary btn-sm" id="addPlayerBtn">＋ 棋士追加</button>
+        </div>
+
+        <div class="table-wrapper" style="margin-top:16px">
+          <table>
+            <thead>
+              <tr>
+                <th>棋士名</th>
+                <th>段位</th>
+                <th>勝</th>
+                <th>負</th>
+                <th>引分</th>
+                <th>勝率</th>
+                <th>備考</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="playersBody">
+              <tr><td colspan="8" style="text-align:center;padding:24px;color:#999">データなし</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- 棋士追加・編集モーダル -->
+<div class="modal-overlay" id="playerModal">
+  <div class="modal">
+    <div class="modal-title" id="pModalTitle">棋士を追加</div>
+    <form id="playerForm">
+      <input type="hidden" id="pEditId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>棋士名 *</label>
+          <input type="text" id="pName" placeholder="例：佐藤 一郎" required>
+        </div>
+        <div class="form-group">
+          <label>段位</label>
+          <select id="pKyu">
+            <option value="">未設定</option>
+            <option value="9級">9級</option>
+            <option value="8級">8級</option>
+            <option value="7級">7級</option>
+            <option value="6級">6級</option>
+            <option value="5級">5級</option>
+            <option value="4級">4級</option>
+            <option value="3級">3級</option>
+            <option value="2級">2級</option>
+            <option value="1級">1級</option>
+            <option value="初段">初段</option>
+            <option value="二段">二段</option>
+            <option value="三段">三段</option>
+            <option value="四段">四段</option>
+            <option value="五段">五段</option>
+            <option value="六段">六段</option>
+            <option value="七段">七段</option>
+            <option value="八段">八段</option>
+            <option value="九段">九段</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備考</label>
+        <textarea id="pNote" rows="2" placeholder="メモ・備考など"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="pCancelModal">キャンセル</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  if (sessionStorage.getItem('loggedIn') !== '1') { location.href = 'index.html'; }
+  document.getElementById('currentUser').textContent = sessionStorage.getItem('userId') || '';
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault(); sessionStorage.clear(); location.href = 'index.html';
+  });
+
+  DB.initSampleData();
+
+  function getStats(playerId) {
+    const matches = DB.getMatches().filter(m => m.status === 'done');
+    let wins = 0, losses = 0, draws = 0;
+    matches.forEach(m => {
+      if (m.blackId === playerId || m.whiteId === playerId) {
+        if (m.result === 'black') { m.blackId === playerId ? wins++ : losses++; }
+        else if (m.result === 'white') { m.whiteId === playerId ? wins++ : losses++; }
+        else if (m.result === 'draw') { draws++; }
+      }
+    });
+    const total = wins + losses + draws;
+    const rate = total > 0 ? (wins / total * 100).toFixed(1) + '%' : '―';
+    return { wins, losses, draws, rate };
+  }
+
+  function renderPlayers() {
+    const players = DB.getPlayers();
+    const tbody = document.getElementById('playersBody');
+    if (players.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#999">棋士データなし</td></tr>';
+      return;
+    }
+    tbody.innerHTML = players.map(p => {
+      const s = getStats(p.id);
+      return `
+        <tr>
+          <td><strong>${p.name}</strong></td>
+          <td>${p.kyu || '―'}</td>
+          <td>${s.wins}</td>
+          <td>${s.losses}</td>
+          <td>${s.draws}</td>
+          <td>${s.rate}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.note || ''}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openEdit(${p.id})">編集</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="deletePlayer(${p.id})">削除</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function openAdd() {
+    document.getElementById('pModalTitle').textContent = '棋士を追加';
+    document.getElementById('pEditId').value = '';
+    document.getElementById('pName').value = '';
+    document.getElementById('pKyu').value = '';
+    document.getElementById('pNote').value = '';
+    document.getElementById('playerModal').classList.add('open');
+  }
+
+  function openEdit(id) {
+    const p = DB.getPlayers().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('pModalTitle').textContent = '棋士を編集';
+    document.getElementById('pEditId').value = id;
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pKyu').value = p.kyu || '';
+    document.getElementById('pNote').value = p.note || '';
+    document.getElementById('playerModal').classList.add('open');
+  }
+
+  function deletePlayer(id) {
+    if (!confirm('この棋士を削除しますか？関連する対局データは残ります。')) return;
+    DB.deletePlayer(id);
+    renderPlayers();
+  }
+
+  document.getElementById('addPlayerBtn').addEventListener('click', openAdd);
+  document.getElementById('pCancelModal').addEventListener('click', () => {
+    document.getElementById('playerModal').classList.remove('open');
+  });
+  document.getElementById('playerModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('playerModal'))
+      document.getElementById('playerModal').classList.remove('open');
+  });
+
+  document.getElementById('playerForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('pName').value.trim(),
+      kyu: document.getElementById('pKyu').value,
+      note: document.getElementById('pNote').value,
+    };
+    const editId = document.getElementById('pEditId').value;
+    if (editId) {
+      DB.updatePlayer(parseInt(editId), data);
+    } else {
+      DB.addPlayer(data);
+    }
+    document.getElementById('playerModal').classList.remove('open');
+    renderPlayers();
+  });
+
+  renderPlayers();
+</script>
+</body>
+</html>
