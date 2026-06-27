@@ -220,6 +220,26 @@
       : '<span class="badge badge-pending">未了</span>';
   }
 
+  function promotionIfWin(playerId) {
+    const p = DB.getPlayers().find(x => x.id === playerId);
+    if (!p || !p.kyu || !DB.nextRank(p.kyu)) return null;
+    const isDan = ['初段','二段','三段','四段','五段','六段','七段','八段','九段'].includes(p.kyu);
+    const threshold = isDan ? 5 : 3;
+    if ((p.levelWins || 0) + 1 >= threshold)
+      return { from: p.kyu, to: DB.nextRank(p.kyu), kind: isDan ? '昇段' : '昇級' };
+    return null;
+  }
+
+  function promoHintHtml(blackId, whiteId) {
+    const bp = promotionIfWin(blackId);
+    const wp = promotionIfWin(whiteId);
+    if (!bp && !wp) return '';
+    const lines = [];
+    if (bp) lines.push(`先手勝で <strong>${bp.from}→${bp.to}</strong> ${bp.kind}！`);
+    if (wp) lines.push(`後手勝で <strong>${wp.from}→${wp.to}</strong> ${wp.kind}！`);
+    return `<div style="margin-top:4px;font-size:11px;color:#1565c0;white-space:normal;line-height:1.8">🏆 ${lines.join('<br>🏆 ')}</div>`;
+  }
+
   function populateRoundFilter() {
     const rounds = [...new Set(DB.getMatches().map(m => m.round).filter(Boolean))];
     const sel = document.getElementById('filterRound');
@@ -247,11 +267,14 @@
         <td>${playerName(m.blackId)}</td>
         <td>${playerName(m.whiteId)}</td>
         <td>${m.teai || '平手'}</td>
-        <td style="white-space:nowrap">
+        <td>
           ${m.status !== 'done'
-            ? `<button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'black')">先手勝</button>
-               <button class="btn btn-sm" style="background:#0277bd;color:#fff;padding:3px 7px;font-size:12px;margin:0 3px" onclick="quickResult(${m.id},'white')">後手勝</button>
-               <button class="btn btn-outline btn-sm" style="padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'draw')">引分</button>`
+            ? `<div style="white-space:nowrap">
+                 <button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'black')">先手勝</button>
+                 <button class="btn btn-sm" style="background:#0277bd;color:#fff;padding:3px 7px;font-size:12px;margin:0 3px" onclick="quickResult(${m.id},'white')">後手勝</button>
+                 <button class="btn btn-outline btn-sm" style="padding:3px 7px;font-size:12px" onclick="quickResult(${m.id},'draw')">引分</button>
+               </div>
+               ${promoHintHtml(m.blackId, m.whiteId)}`
             : resultLabel(m.result)
           }
         </td>

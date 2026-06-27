@@ -544,6 +544,26 @@
     return '<span class="badge badge-pending">未了</span>';
   }
 
+  function promotionIfWin(playerId) {
+    const p = DB.getPlayers().find(x => x.id === playerId);
+    if (!p || !p.kyu || !DB.nextRank(p.kyu)) return null;
+    const isDan = ['初段','二段','三段','四段','五段','六段','七段','八段','九段'].includes(p.kyu);
+    const threshold = isDan ? 5 : 3;
+    if ((p.levelWins || 0) + 1 >= threshold)
+      return { from: p.kyu, to: DB.nextRank(p.kyu), kind: isDan ? '昇段' : '昇級' };
+    return null;
+  }
+
+  function promoHintHtml(blackId, whiteId) {
+    const bp = promotionIfWin(blackId);
+    const wp = promotionIfWin(whiteId);
+    if (!bp && !wp) return '';
+    const lines = [];
+    if (bp) lines.push(`先手勝で <strong>${bp.from}→${bp.to}</strong> ${bp.kind}！`);
+    if (wp) lines.push(`後手勝で <strong>${wp.from}→${wp.to}</strong> ${wp.kind}！`);
+    return `<div style="margin-top:5px;font-size:11px;color:#1565c0;white-space:normal;line-height:1.8">🏆 ${lines.join('<br>🏆 ')}</div>`;
+  }
+
   function renderTodayMatches() {
     const today = new Date().toISOString().split('T')[0];
     const matches = DB.getMatches().filter(m => m.date === today)
@@ -561,12 +581,15 @@
         <td>${m.teai || '平手'}</td>
         <td>${resultLabel(m.result)}</td>
         <td>${m.status === 'done' ? '<span class="badge badge-done">終了</span>' : '<span class="badge badge-pending">対局中</span>'}</td>
-        <td style="white-space:nowrap">
+        <td>
           ${m.status !== 'done'
-            ? `<button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:4px 8px" onclick="setResult(${m.id},'black')">先手勝</button>
-               <button class="btn btn-sm" style="background:#0277bd;color:#fff;padding:4px 8px;margin:0 4px" onclick="setResult(${m.id},'white')">後手勝</button>
-               <button class="btn btn-outline btn-sm" style="padding:4px 8px" onclick="setResult(${m.id},'draw')">引分</button>
-               <button class="btn btn-outline btn-sm" style="padding:4px 8px;margin-left:4px;color:#b71c1c;border-color:#b71c1c" onclick="cancelMatch(${m.id})">× 手合取消</button>`
+            ? `<div style="white-space:nowrap">
+                 <button class="btn btn-sm" style="background:#0d2e7a;color:#fff;padding:4px 8px" onclick="setResult(${m.id},'black')">先手勝</button>
+                 <button class="btn btn-sm" style="background:#0277bd;color:#fff;padding:4px 8px;margin:0 4px" onclick="setResult(${m.id},'white')">後手勝</button>
+                 <button class="btn btn-outline btn-sm" style="padding:4px 8px" onclick="setResult(${m.id},'draw')">引分</button>
+                 <button class="btn btn-outline btn-sm" style="padding:4px 8px;margin-left:4px;color:#b71c1c;border-color:#b71c1c" onclick="cancelMatch(${m.id})">× 手合取消</button>
+               </div>
+               ${promoHintHtml(m.blackId, m.whiteId)}`
             : `<button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">結果取消</button>`
           }
         </td>
