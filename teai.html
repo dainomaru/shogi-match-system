@@ -590,7 +590,10 @@
                  <button class="btn btn-outline btn-sm" style="padding:4px 8px;margin-left:4px;color:#b71c1c;border-color:#b71c1c" onclick="cancelMatch(${m.id})">× 手合取消</button>
                </div>
                ${promoHintHtml(m.blackId, m.whiteId)}`
-            : `<button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">結果取消</button>`
+            : `<div style="white-space:nowrap">
+                 <button class="btn btn-outline btn-sm" onclick="confirmReset(${m.id})">結果取消</button>
+                 <button class="btn btn-outline btn-sm" style="margin-left:4px;color:#b71c1c;border-color:#b71c1c" onclick="cancelMatch(${m.id})">× 手合取消</button>
+               </div>`
           }
         </td>
       </tr>`).join('');
